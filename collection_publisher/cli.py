@@ -24,9 +24,6 @@ from geoalchemy2.shape import from_shape
 from filelock import FileLock
 from pathlib import Path
 
-# Obtém a variável de ambiente "ENVIRONMENT" (pode ser "development" ou "production")
-environment = os.getenv("ENVIRONMENT")
-
 # Configurações específicas para o ambiente de produção
 SQLALCHEMY_DATABASE_URI = os.environ.get("SQLALCHEMY_DATABASE_URI")
 prefixo = os.environ.get("COLLECTION_PUBLISHER_PREFIX")
