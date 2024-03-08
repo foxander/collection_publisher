@@ -11,7 +11,8 @@ install_requires = ["Shapely==1.8.5.post1",
                     "geopandas==0.12.2",
                     "pyproject==1.3.1",
                     "filelock==3.13.1",
-                    "bdc-catalog @ git+https://github.com/brazil-data-cube/bdc-catalog.git@v1.0.1#egg=bdc-catalog"
+                    "rasterio==1.3.9",
+                    "bdc-catalog @ git+https://github.com/brazil-data-cube/bdc-catalog.git@v1.0.2#egg=bdc-catalog"
                     ]
 
 packages = find_packages()
@@ -30,7 +31,7 @@ setup(
     platforms="any",
     entry_points={
         'console_scripts': [
-            'collection-publisher = collector_build.cli:cli',
+            'collection-publisher = collector_publisher.cli:cli',
         ],
     },
     install_requires=install_requires,
