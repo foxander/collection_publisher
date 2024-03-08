@@ -9,10 +9,6 @@ import pandas as pd
 import geopandas as gpd
 import rasterio.warp
 import rasterio.features
-#import warnings
-#warnings.filterwarnings("ignore")
-#import pkg_resources
-#import logging.config
 
 from logging import info,debug,warning, error, basicConfig, INFO
 from datetime import datetime
@@ -31,20 +27,12 @@ from pathlib import Path
 # Obtém a variável de ambiente "ENVIRONMENT" (pode ser "development" ou "production")
 environment = os.getenv("ENVIRONMENT")
 
-if environment == "development":
-    #SQLALCHEMY_DATABASE_URI='postgresql://postgres:1234@my-pg3/bdcdb'
-    SQLALCHEMY_DATABASE_URI='postgresql://postgres:secreto@localhost:5432/bdcdb'
-    prefixo = '/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados'
-    dir_file_processed = './processed'
-    sat_sensor_incluse = ['CBERS','WFI', 'AWFI','AMAZONIA', 'MUX']
-    logpath = '/log'
-else:
-    # Configurações específicas para o ambiente de produção
-    SQLALCHEMY_DATABASE_URI = os.environ.get("SQLALCHEMY_DATABASE_URI")
-    prefixo = os.environ.get("COLLECTION_PUBLISHER_PREFIX")
-    dir_file_processed = os.environ.get("COLLECTION_PUBLISHER_CONTAINER_FILE_PROCESSED")
-    sat_sensor_incluse = os.environ.get("COLLECTION_PUBLISHER_LIST").split(',')
-    logpath = os.environ.get("COLLECTION_PUBLISHER_CONTAINER_LOG_DIR")
+# Configurações específicas para o ambiente de produção
+SQLALCHEMY_DATABASE_URI = os.environ.get("SQLALCHEMY_DATABASE_URI")
+prefixo = os.environ.get("COLLECTION_PUBLISHER_PREFIX")
+dir_file_processed = os.environ.get("COLLECTION_PUBLISHER_CONTAINER_FILE_PROCESSED")
+sat_sensor_incluse = os.environ.get("COLLECTION_PUBLISHER_LIST").split(',')
+logpath = os.environ.get("COLLECTION_PUBLISHER_CONTAINER_LOG_DIR")
 
 COG_MIME_TYPE = 'image/tiff; application=geotiff; profile=cloud-optimized'
 
@@ -82,13 +70,6 @@ def collectionpublisher(
             log_level:str
             ):
 
-        '''fmt = '%Y%m%dT%H%M%S'
-        _now_str = datetime.utcnow().strftime(fmt)
-        logpath1 = logpath + "_" + _now_str + ".log"
-
-        global logger
-        logger = setLogger('collectionpublisher', logpath1, log_level)'''
-
         if log_level:
             basicConfig(level=log_level)
         else:
@@ -108,25 +89,6 @@ def guess_mime_type(extension: str, cog=False) -> Optional[str]:
         return COG_MIME_TYPE
 
     return mime[0]
-
-def setLogger(log: str, log_path: str, loglevel=INFO):
-
-    '''if log_path != None:
-        path_location_log = log_path
-
-    if loglevel != None:
-        level_log = loglevel.upper()
-
-    LOGGING_CONFIG = pkg_resources.resource_filename(
-        'collection_publisher', 'logging.ini')
-    logging.config.fileConfig(LOGGING_CONFIG,
-                              disable_existing_loggers=False,
-                              defaults={'logfilename': path_location_log,
-                                        'loglevel': level_log
-                                    }
-                              )
-    logger = logging.getLogger(log)
-    return logger'''
 
 def get_or_create_model(model_class, defaults=None, engine=None, **restrictions):
     """Get or create Brazil Data Cube model.
@@ -334,7 +296,6 @@ def create_item(collection: Collection,
 
         debug("Saving to the database...")
 
-        #if database_save:
         item.assets = assets
         item.cloud_cover = None
         item.start_date = datetime.strptime(start_date,'%Y-%m-%dT%H:%M:%S')
@@ -437,8 +398,8 @@ def raster_extent(imagepath: str, epsg='EPSG:4326') -> shapely.geometry.Polygon:
 
 def write_log():
 
-    if not os.path.isdir(logpath): #'processed'):
-        os.mkdir(logpath) #'processed')
+    if not os.path.isdir(logpath):
+        os.mkdir(logpath)
 
     fmt = '%Y%m%dT%H%M%S'
     _now_str = datetime.now().strftime(fmt)
@@ -509,12 +470,11 @@ def processar_arquivo(collection1:str, filename:str):
         lock.release()
 
         #Move the file for processed path
-        if not os.path.isdir(dir_file_processed): #'processed'):
-            os.mkdir(dir_file_processed) #'processed')
+        if not os.path.isdir(dir_file_processed):
+            os.mkdir(dir_file_processed)
         fmt = '%Y%m%dT%H%M%S'
         _now_str = datetime.now().strftime(fmt) #utcnow()
         new_filename = (Path(filename).stem) + "_" + _now_str +"_processed.json"
-        #new_file = os.path.join("./processed", new_filename)
         new_file = os.path.join(dir_file_processed, new_filename)
         os.rename(filename, new_file)
 
@@ -531,8 +491,4 @@ def processar_arquivo(collection1:str, filename:str):
 cli.add_command(collectionpublisher)
 
 if __name__ == '__main__':
-    '''app = create_app()
-    with app.app_context():
-        collectionpublisher("AMZ1-WFI-L4-SR-1", "exemplo.json", INFO)
-        #coletor("AMZ1-WFI-L4-SR-1","amazonia_wfi_2024_01-items.json")'''
-    cli()
+   cli()
