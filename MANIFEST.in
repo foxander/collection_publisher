@@ -1,0 +1,3 @@
+include *.rst
+include collection_publisher/logging.ini
+recursive-include collection_publisher *.py
