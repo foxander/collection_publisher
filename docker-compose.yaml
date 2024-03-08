@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  COLLECTION_PUBLISHER:
+    build:
+      context: ./
+      args:
+        - BASE_IMAGE
+        - COLLECTION_PUBLISHER_APP_VERSION
+        - COLLECTION_PUBLISHER_APP_USER_NAME
+        - COLLECTION_PUBLISHER_APP_USER_ID
+        - COLLECTION_PUBLISHER_APP_USER_GROUP
+        - COLLECTION_PUBLISHER_APP_USER_GROUP_ID
+    image: COLLECTION_PUBLISHER:${COLLECTOR_APP_VERSION}
+    container_name: collection-publisher
+    hostname: collection-publisher
+    networks:
+      - my-pg3-network
+    volumes:
+      - "${COLLECTION_PUBLISHER_HOST_INPUT_DIR}:${COLLECTION_PUBLISHER_CONTAINER_INPUT_DIR}"
+    env_file: .env
+    user: ${COLLECTION_PUBLISHER_APP_USER_ID}:${COLLECTION_PUBLISHER_APP_USER_GROUP_ID}
+    command: >
+      collection-publisher collection_publisher --collection "${COLLECTION_PUBLISHER_COLLECTION}" --input-json "${COLLECTION_PUBLISHER_CONTAINER_INPUT_DIR}" --log-info "${COLLECTION_PUBLISHER_LOG_LEVEL}"
+
+networks:
+    my-pg3-network:
+        external: true

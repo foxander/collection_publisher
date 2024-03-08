@@ -1,0 +1,57 @@
+[
+    {
+        "name": "AMAZONIA_1_WFI_20231217_035_018_1",
+        "reprocess": false,
+        "start_date": "2023-12-17T00:00:00",
+        "end_date": "2023-12-17T00:00:00",
+        "assets": {
+            "thumbnail": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.png",
+            "BAND1": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.tif",
+            "BAND2": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND2.tif",
+            "BAND3": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND3.tif",
+            "BAND4": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND4.tif",
+            "xml":"/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.xml"
+        }
+    },
+    {
+        "name": "AMAZONIA_1_WFI_20231217_035_018_2",
+        "reprocess": true,
+        "start_date": "2023-12-18T00:00:00",
+        "end_date": "2023-12-18T00:00:00",
+        "assets": {
+            "thumbnail": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.png",
+            "BAND1": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.tif",
+            "BAND2": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND2.tif",
+            "BAND3": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND3.tif",
+            "BAND4": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND4.tif"
+          }
+    },
+    {
+        "name": "AMAZONIA_1_WFI_20231217_035_018_3",
+        "reprocess": false,
+        "start_date": "2023-12-17T00:00:00",
+        "end_date": "2023-12-17T00:00:00",
+        "assets": {
+            "thumbnail": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.png",
+            "BAND1": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.tif",
+            "BAND2": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND2.tif",
+            "BAND3": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND3.tif",
+            "BAND4": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND4.tif",
+            "xml":"/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.xml"
+        }
+    },
+    {
+        "name": "AMAZONIA_1_20231217_035_018_3",
+        "reprocess": false,
+        "start_date": "2023-12-17T00:00:00",
+        "end_date": "2023-12-17T00:00:00",
+        "assets": {
+            "thumbnail": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.png",
+            "BAND1": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.tif",
+            "BAND2": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND2.tif",
+            "BAND3": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND3.tif",
+            "BAND4": "/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND4.tif",
+            "xml":"/mnt/c/users/fox/projetos/INPE/biginpe/mnt/dados/amazonia_wfi/2023_12/AMAZONIA_1_WFI_20231217_035_018_L4_BAND1.xml"
+        }
+    }
+]
