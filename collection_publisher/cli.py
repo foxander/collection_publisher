@@ -9,6 +9,7 @@ import pandas as pd
 import geopandas as gpd
 import rasterio.warp
 import rasterio.features
+import traceback
 
 from logging import info,debug,warning, error, basicConfig, INFO
 from datetime import datetime
@@ -30,6 +31,7 @@ prefixo = os.environ.get("COLLECTION_PUBLISHER_PREFIX")
 dir_file_processed = os.environ.get("COLLECTION_PUBLISHER_CONTAINER_FILE_PROCESSED")
 sat_sensor_incluse = os.environ.get("COLLECTION_PUBLISHER_LIST").split(',')
 logpath = os.environ.get("COLLECTION_PUBLISHER_CONTAINER_LOG_DIR")
+prefixo_data = os.environ.get("COLLECTION_PUBLISHER_PREFIX_DATA")
 
 COG_MIME_TYPE = 'image/tiff; application=geotiff; profile=cloud-optimized'
 
@@ -232,20 +234,17 @@ def create_item(collection: Collection,
         # Pre-compute metadata
         for key in assets_dict.keys():
             if key=="thumbnail":
-                #href_pvi = os.path.join(pathdir,assets_dict[key])
-                #file_pvi = os.path.join(prefixo, href_pvi)
-                #href_pvi = '/'.join(assets_dict[key].split('/')[3:])
-                href_pvi = r.sub('',assets_dict[key])
+                href_pvi = prefixo_data + (r.sub('',assets_dict[key]))
                 file_pvi = assets_dict[key]
                 assets["thumbnail"] = create_asset(href=str(href_pvi), mime_type=mime_type_png,
                                         role=['thumbnail'], absolute_path=str(file_pvi))
             elif (key=="CMASK") | ("BAND" in key):
-                href_tci = r.sub('',assets_dict[key])
+                href_tci = prefixo_data + (r.sub('',assets_dict[key]))
                 file_tci = assets_dict[key]
                 assets[key] = create_asset(href=str(href_tci), mime_type=cog_mime_type_tiff,
                                     role=['data'], absolute_path=file_tci, is_raster=True)
             else:
-                href_file = r.sub('',assets_dict[key])
+                href_file = prefixo_data + (r.sub('',assets_dict[key]))
                 file_extra = assets_dict[key]
                 mini_type_file = guess_mime_type(assets_dict[key])
                 assets[key] = create_asset(href=str(href_file), mime_type=mini_type_file,
@@ -349,18 +348,7 @@ def get_footprint(imagepath: str, epsg = 'EPSG:4326') -> tuple:
     See:
         https://rasterio.readthedocs.io/en/latest/topics/masks.html
     """
-    raster_input = gdal.Open(str(imagepath), 0)
-    options = gdal.TranslateOptions(format='GTiff', bandList=[1], widthPct=1, heightPct=1 )
-
-    fileAux = str(imagepath).replace('.tif', '_aux.tif')
-
-    # convocar a função Translate e passar o objeto 'options'
-    gdal.Translate(destName=fileAux, srcDS=raster_input, options=options)
-
-    raster_input = None
-
-    #imagepath
-    with rasterio.open(fileAux, driver = "GTiff") as dataset:
+    with rasterio.open(str(imagepath), driver = "GTiff") as dataset:
         mask = dataset.dataset_mask()
 
         geoms = []
@@ -376,8 +364,6 @@ def get_footprint(imagepath: str, epsg = 'EPSG:4326') -> tuple:
         # ToDo: Otimizar
         df = pd.DataFrame(data = res)
         gdf = gpd.GeoDataFrame(df, crs=epsg, geometry = geoms)
-
-    os.remove(fileAux)
 
     return gdf.unary_union.bounds, geoms[0]
 
@@ -419,12 +405,19 @@ def processar_arquivo(collection1:str, filename:str):
             logList.append('Error checking this collection. This collection is not valid or does not exist.')
             return
 
-        lockfile = filename + ".lock"
+        info(f"Collection {collection.identifier} (id={collection.id}) found.")
+        logList.append(f"Collection {collection.identifier} (id={collection.id}) found.")
+
+        lockfile = os.path.join("/tmp", os.path.basename(filename)) + ".lock"
+        info(f"Creating lock file in {lockfile}")
         lock = FileLock(lockfile)
         lock.acquire()
 
         with open(filename, 'r') as f:
             data = json.load(f)
+            info(f"File {str(filename)} loaded, {len(data)} items to check.")
+            logList.append(f"File {str(filename)} loaded, {len(data)} items to check.")
+                    
             for i in data:
                 # Verifica se no arquivo a coleção equivale a coleção passada
                 sat = i['name'].split('_')[0]
@@ -453,6 +446,9 @@ def processar_arquivo(collection1:str, filename:str):
                         reprocess = i[key]
                         break
 
+                info(f"Preparing to create item {i['name']}")
+                logList.append(f"Preparing to create item {i['name']}")
+
                 create_item(collection,
                             reprocess,
                             i['name'],
@@ -461,8 +457,8 @@ def processar_arquivo(collection1:str, filename:str):
                             i['assets'])
         f.close()
     except IOError:
-        error(u'Error reading the file!')
-        logList.append(u'Error reading the file!')
+        error(u'Error reading the file! {}'.format(traceback.format_exc()))
+        logList.append(u'Error reading the file! {}'.format(traceback.format_exc()))
     finally:
         lock.release()
 
