@@ -31,7 +31,7 @@ setup(
     platforms="any",
     entry_points={
         'console_scripts': [
-            'collection-publisher = collector_publisher.cli:cli',
+            'collection-publisher = collection_publisher.cli:cli',
         ],
     },
     install_requires=install_requires,
