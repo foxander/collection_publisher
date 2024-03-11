@@ -428,6 +428,8 @@ def process_file(collection1:str, filename:str):
                 if not (sat in sat_sensor_incluse) & (sensor in sat_sensor_incluse):
                     error('The collection parameter does not match what is indicated in the file.')
                     logList.append('The collection parameter does not match what is indicated in the file.')
+                    info(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
+                    logList.append(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
                     count+=1
                     continue
 
@@ -438,6 +440,8 @@ def process_file(collection1:str, filename:str):
                 if not collection_f == sat2:
                     error('The collection parameter does not match what is indicated in the file.')
                     logList.append('The collection parameter does not match what is indicated in the file.')
+                    info(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
+                    logList.append(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
                     count+=1
                     continue
 
