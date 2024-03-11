@@ -75,7 +75,7 @@ def collectionpublisher(
             basicConfig(level='INFO')
 
         if os.path.exists(input_json):
-            processar_arquivo(collection, input_json)
+            process_file(collection, input_json)
         else:
             warning("The file does not exist.")
             logList.append("The file does not exist.")
@@ -392,7 +392,7 @@ def write_log():
         f.write('\n'.join(logList))
     f.close()
 
-def processar_arquivo(collection1:str, filename:str):
+def process_file(collection1:str, filename:str):
     # Verificar se existe um json
     info('Starting to publish the metadata in the database...')
     logList.append('Starting to publish the metadata in the database...')
@@ -417,7 +417,7 @@ def processar_arquivo(collection1:str, filename:str):
             data = json.load(f)
             info(f"File {str(filename)} loaded, {len(data)} items to check.")
             logList.append(f"File {str(filename)} loaded, {len(data)} items to check.")
-                    
+            count = 1        
             for i in data:
                 # Verifica se no arquivo a coleção equivale a coleção passada
                 sat = i['name'].split('_')[0]
@@ -428,6 +428,7 @@ def processar_arquivo(collection1:str, filename:str):
                 if not (sat in sat_sensor_incluse) & (sensor in sat_sensor_incluse):
                     error('The collection parameter does not match what is indicated in the file.')
                     logList.append('The collection parameter does not match what is indicated in the file.')
+                    count+=1
                     continue
 
                 #Verifica se o nome da coleção é igual nome da coleção no arquivo
@@ -437,6 +438,7 @@ def processar_arquivo(collection1:str, filename:str):
                 if not collection_f == sat2:
                     error('The collection parameter does not match what is indicated in the file.')
                     logList.append('The collection parameter does not match what is indicated in the file.')
+                    count+=1
                     continue
 
                 reprocess = False
@@ -446,8 +448,8 @@ def processar_arquivo(collection1:str, filename:str):
                         reprocess = i[key]
                         break
 
-                info(f"Preparing to create item {i['name']}")
-                logList.append(f"Preparing to create item {i['name']}")
+                info(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
+                logList.append(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
 
                 create_item(collection,
                             reprocess,
@@ -455,6 +457,7 @@ def processar_arquivo(collection1:str, filename:str):
                             i['start_date'],
                             i['end_date'],
                             i['assets'])
+                count+=1
         f.close()
     except IOError:
         error(u'Error reading the file! {}'.format(traceback.format_exc()))
