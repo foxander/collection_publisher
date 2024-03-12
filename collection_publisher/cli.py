@@ -1,15 +1,17 @@
 import os
 import json
-import rasterio
 import click
 import mimetypes
 import re
 import shapely.geometry
 import pandas as pd
 import geopandas as gpd
+import rasterio
 import rasterio.warp
 import rasterio.features
+import rasterio.profiles
 import traceback
+import shutil
 
 from logging import info,debug,warning, error, basicConfig, INFO
 from datetime import datetime
@@ -215,6 +217,7 @@ def create_asset(href: str,
 
 def create_item(collection: Collection,
                 reprocess: bool,
+                cloud_cover: float,
                 item_name: str,
                 start_date: datetime,
                 end_date: datetime,
@@ -229,31 +232,6 @@ def create_item(collection: Collection,
     cog_mime_type_tiff = 'image/tiff; application=geotiff; profile=cloud-optimized'
     mime_type_png = 'image/png'
     r = re.compile(prefixo)
-
-    try:
-        # Pre-compute metadata
-        for key in assets_dict.keys():
-            if key=="thumbnail":
-                href_pvi = prefixo_data + (r.sub('',assets_dict[key]))
-                file_pvi = assets_dict[key]
-                assets["thumbnail"] = create_asset(href=str(href_pvi), mime_type=mime_type_png,
-                                        role=['thumbnail'], absolute_path=str(file_pvi))
-            elif (key=="CMASK") | ("BAND" in key):
-                href_tci = prefixo_data + (r.sub('',assets_dict[key]))
-                file_tci = assets_dict[key]
-                assets[key] = create_asset(href=str(href_tci), mime_type=cog_mime_type_tiff,
-                                    role=['data'], absolute_path=file_tci, is_raster=True)
-            else:
-                href_file = prefixo_data + (r.sub('',assets_dict[key]))
-                file_extra = assets_dict[key]
-                mini_type_file = guess_mime_type(assets_dict[key])
-                assets[key] = create_asset(href=str(href_file), mime_type=mini_type_file,
-                                    role=['file'], absolute_path=file_extra)
-
-    except:
-        error("Sorry, we were unable to create the Assets to the item!")
-        logList.append("Sorry, we were unable to create the Assets to the item!")
-        return False
 
     with current_app._get_current_object().app_context():
         # Let's create a new Item definition
@@ -290,10 +268,34 @@ def create_item(collection: Collection,
                     logList.append('Image metadata is already in the database.')
                     return False
 
+        try:
+            # Pre-compute metadata
+            for key in assets_dict.keys():
+                if key=="thumbnail":
+                    href_pvi = prefixo_data + (r.sub('',assets_dict[key]))
+                    file_pvi = assets_dict[key]
+                    assets["thumbnail"] = create_asset(href=str(href_pvi), mime_type=mime_type_png,
+                                            role=['thumbnail'], absolute_path=str(file_pvi))
+                elif (key=="CMASK") | ("BAND" in key):
+                    href_tci = prefixo_data + (r.sub('',assets_dict[key]))
+                    file_tci = assets_dict[key]
+                    assets[key] = create_asset(href=str(href_tci), mime_type=cog_mime_type_tiff,
+                                        role=['data'], absolute_path=file_tci, is_raster=True)
+                else:
+                    href_file = prefixo_data + (r.sub('',assets_dict[key]))
+                    file_extra = assets_dict[key]
+                    mini_type_file = guess_mime_type(assets_dict[key])
+                    assets[key] = create_asset(href=str(href_file), mime_type=mini_type_file,
+                                        role=['file'], absolute_path=file_extra)
+        except:
+            error("Sorry, we were unable to create the Assets to the item! {}".format(traceback.format_exc()))
+            logList.append("Sorry, we were unable to create the Assets to the item! {}".format(traceback.format_exc()))
+            return False
+
         debug("Saving to the database...")
 
         item.assets = assets
-        item.cloud_cover = None
+        item.cloud_cover = cloud_cover
         item.start_date = datetime.strptime(start_date,'%Y-%m-%dT%H:%M:%S')
         item.end_date = datetime.strptime(end_date,'%Y-%m-%dT%H:%M:%S')
 
@@ -380,17 +382,20 @@ def raster_extent(imagepath: str, epsg='EPSG:4326') -> shapely.geometry.Polygon:
         return shapely.geometry.shape(rasterio.warp.transform_geom(dataset.crs, epsg, _geom, precision=6))
 
 def write_log():
+    try:
+        if not os.path.isdir(logpath):
+            os.mkdir(logpath)
 
-    if not os.path.isdir(logpath):
-        os.mkdir(logpath)
+        fmt = '%Y%m%dT%H%M%S'
+        _now_str = datetime.now().strftime(fmt)
+        logpath1 = logpath + "/log_" + _now_str + ".log"
 
-    fmt = '%Y%m%dT%H%M%S'
-    _now_str = datetime.now().strftime(fmt)
-    logpath1 = logpath + "/log_" + _now_str + ".log"
-
-    with open(logpath1, 'a+') as f:
-        f.write('\n'.join(logList))
-    f.close()
+        with open(logpath1, 'a+') as f:
+            f.write('\n'.join(logList))
+        f.close()
+    except:
+        error('Error when trying to create the "./log" directory!')
+        logList.append('Error when trying to create the "./log" directory!')
 
 def process_file(collection1:str, filename:str):
     # Verificar se existe um json
@@ -446,17 +451,24 @@ def process_file(collection1:str, filename:str):
                     continue
 
                 reprocess = False
+                cloud_cover = None
 
                 for key in i.keys():
                     if key=='reprocess':
                         reprocess = i[key]
                         break
-
+                
+                for key in i.keys():
+                    if key=='cloud_cover':
+                        cloud_cover = i[key]
+                        break
+                                
                 info(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
                 logList.append(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
 
                 create_item(collection,
                             reprocess,
+                            cloud_cover,
                             i['name'],
                             i['start_date'],
                             i['end_date'],
@@ -471,16 +483,33 @@ def process_file(collection1:str, filename:str):
 
         #Move the file for processed path
         if not os.path.isdir(dir_file_processed):
-            os.mkdir(dir_file_processed)
+            try:
+                os.mkdir(dir_file_processed)
+            except:
+                error('Error when trying to create the "./processed" directory!')
+                logList.append('Error when trying to create the "./processed" directory!')
+                info('End of the process!')
+                logList.append('End of the process!')
+                write_log()
+                return
+                        
         fmt = '%Y%m%dT%H%M%S'
         _now_str = datetime.now().strftime(fmt) #utcnow()
         new_filename = (Path(filename).stem) + "_" + _now_str +"_processed.json"
         new_file = os.path.join(dir_file_processed, new_filename)
-        os.rename(filename, new_file)
+        try:
+            shutil.move(filename, new_file)
+        except:
+            error('Error moving JSON file.')
+            logList.append('Error moving JSON file.')
 
         #Cleaning unnecessary files if they exist.
-        if os.path.exists(lockfile):
-            os.remove(lockfile)
+        try:
+            if os.path.exists(lockfile):
+                os.remove(lockfile)
+        except:
+            error('Error when trying to delete the .lock file!')
+            logList.append('Error when trying to delete the .lock file!')
 
     info('End of the process!')
     logList.append('End of the process!')
