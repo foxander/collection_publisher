@@ -20,9 +20,9 @@ from flask.cli import FlaskGroup, with_appcontext
 from bdc_catalog import BDCCatalog
 from osgeo import gdal, osr
 from sqlalchemy import func
-from bdc_catalog.models import Collection, Item, db
+from bdc_catalog.models import Collection, Item, db, Tile
 from bdc_catalog.utils import multihash_checksum_sha256, geom_to_wkb
-from typing import List, Optional
+from typing import List, Optional, Any
 from geoalchemy2.shape import from_shape
 from filelock import FileLock
 from pathlib import Path
