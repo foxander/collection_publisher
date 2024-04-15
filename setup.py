@@ -12,6 +12,7 @@ install_requires = ["Shapely==1.8.5.post1",
                     "pyproject==1.3.1",
                     "filelock==3.13.1",
                     "rasterio==1.3.9",
+                    "netCDF4==1.6.5',
                     "bdc-catalog @ git+https://github.com/brazil-data-cube/bdc-catalog.git@v1.0.2#egg=bdc-catalog"
                     ]
 
