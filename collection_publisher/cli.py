@@ -51,7 +51,7 @@ def cli():
 
 @cli.command()
 @click.option('-c', '--collection', type=click.STRING, help='BDC Catalog collection name', required=True)
-@click.option('-i', '--input-json', type=click.STRING, help='Input Json', required=True)
+@click.option('-i', '--input-json', type=click.STRING, help='Input Json', required=False)
 @click.option('-l', '--log-level', help='Log level', required=False)
 @click.option('-d', '--directory', type=click.STRING, help='Directories where .json files are located', required=False)
 @click.option('-a', '--authenticate', help='Checks authenticity of '.json' files', required=False)
@@ -59,7 +59,7 @@ def cli():
 def collectionpublisher(
             collection: str,
             input_json: str,
-            log_level:str
+            log_level:str,
             directory= None,
             authenticate = False
             ):
@@ -240,7 +240,7 @@ def create_item(collection: Collection,
     logList.append(f'Item: {item_name}...')
 
     assets = dict()
-    
+
     file_tci = ''
 
     mime_type_png = 'image/png'
@@ -252,7 +252,7 @@ def create_item(collection: Collection,
             tile = Tile.query().filter(
             Tile.name == tile_id,
             ).first()
-                    
+
         # Let's create a new Item definition
         with db.session.begin_nested():
             item = (
@@ -290,7 +290,7 @@ def create_item(collection: Collection,
         try:
             # Pre-compute metadata
             for key in assets_dict.keys():
-                if key=="thumbnail":
+                if (key=="thumbnail") | (key=="PVI"):
                     href_pvi = prefixo_data + (r.sub('',assets_dict[key]))
                     file_pvi = assets_dict[key]
                     assets["thumbnail"] = create_asset(href=str(href_pvi), mime_type=mime_type_png,
@@ -493,7 +493,7 @@ def process_file(collection1:str, filename:str, authenticate:bool):
     logList.append('Starting to publish the metadata in the database...')
 
     publish_fail = []
-            
+
     try:
         try:
             collection = collection_by_identifier(collection1)
