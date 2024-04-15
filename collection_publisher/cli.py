@@ -516,48 +516,48 @@ def process_file(collection1:str, filename:str, authenticate:bool):
             logList.append(f"File {str(filename)} loaded, {len(data)} items to check.")
             count = 1        
             for i in data:
-                        if authenticate:
-                                #Verifica a autenticidade do arquivo passado
-                                if not authenticity(i['name'], collection1, count/len(data)):
-                                    error('The collection parameter does not match what is indicated in the file.')
-                                    logList.append('The collection parameter does not match what is indicated in the file.')
-                                    error(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
-                                    logList.append(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
-                                    count+=1
-                                    publish_fail.append(i['name'])
-                                    continue
 
-                        reprocess = False
-                        cloud_cover = None
-                        tile_id = None
-
-                        for key in i.keys():
-                                    if key=='reprocess':
-                                                reprocess = i[key]
-                                                continue
-                                    if key=='cloud_cover':
-                                                cloud_cover = i[key]
-                                                continue
-                                    if key=='tile_id':
-                                                tile_id = i[key]
-                                                continue
-
-                                
-                        info(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
-                        logList.append(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
-
-                        if not create_item(collection,
-                                        reprocess,
-                                        cloud_cover,
-                                        tile_id,
-                                        i['name'],
-                                        i['start_date'],
-                                        i['end_date'],
-                                        i['assets']):
-                                                    publish_fail.append(i['name'])
-                                                    
-                                    
+                if authenticate:
+                    #Verifica a autenticidade do arquivo passado
+                    if not authenticity(i['name'], collection1, count/len(data)):
+                        error('The collection parameter does not match what is indicated in the file.')
+                        logList.append('The collection parameter does not match what is indicated in the file.')
+                        error(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
+                        logList.append(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
                         count+=1
+                        publish_fail.append(i['name'])
+                        continue
+
+                reprocess = False
+                cloud_cover = None
+                tile_id = None
+
+                for key in i.keys():
+                    if key=='reprocess':
+                        reprocess = i[key]
+                        continue
+
+                    if key=='cloud_cover':
+                        cloud_cover = i[key]
+                        continue
+
+                    if key=='tile_id':
+                        tile_id = i[key]
+                        continue
+
+                info(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
+                logList.append(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
+
+                if not create_item(collection,
+                                   reprocess,
+                                   cloud_cover,
+                                   tile_id,
+                                   i['name'],
+                                   i['start_date'],
+                                   i['end_date'],
+                                   i['assets']):
+                    publish_fail.append(i['name'])
+                count+=1
         f.close()
     except IOError:
         error(u'Error reading the file! {}'.format(traceback.format_exc()))
