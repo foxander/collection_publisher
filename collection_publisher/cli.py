@@ -26,24 +26,13 @@ from typing import List, Optional
 from geoalchemy2.shape import from_shape
 from filelock import FileLock
 from pathlib import Path
-
-# Configurações específicas para o ambiente de produção
-SQLALCHEMY_DATABASE_URI = os.environ.get("SQLALCHEMY_DATABASE_URI")
-prefixo = os.environ.get("COLLECTION_PUBLISHER_PREFIX")
-dir_file_processed = os.environ.get("COLLECTION_PUBLISHER_CONTAINER_FILE_PROCESSED")
-sat_sensor_incluse = os.environ.get("COLLECTION_PUBLISHER_LIST").split(',')
-logpath = os.environ.get("COLLECTION_PUBLISHER_CONTAINER_LOG_DIR")
-prefixo_data = os.environ.get("COLLECTION_PUBLISHER_PREFIX_DATA")
-
-COG_MIME_TYPE = 'image/tiff; application=geotiff; profile=cloud-optimized'
-
-dict_sat = {'CB4A-WFI':'CBERS_4A_WFI',
-            'CB4-WFI':'CBERS_4_AWFI',
-            'CB4-MUX':'CBERS_4_MUX',
-            'AMZ1-WFI':'AMAZONIA_1_WFI'}
+from netCDF4 import Dataset
+from .config import *
 
 # Logging
 logList = []
+
+fileslist = []
 
 def create_app():
     app = Flask(__name__)
@@ -64,11 +53,15 @@ def cli():
 @click.option('-c', '--collection', type=click.STRING, help='BDC Catalog collection name', required=True)
 @click.option('-i', '--input-json', type=click.STRING, help='Input Json', required=True)
 @click.option('-l', '--log-level', help='Log level', required=False)
+@click.option('-d', '--directory', type=click.STRING, help='Directories where .json files are located', required=False)
+@click.option('-a', '--authenticate', help='Checks authenticity of '.json' files', required=False)
 @with_appcontext
 def collectionpublisher(
             collection: str,
             input_json: str,
             log_level:str
+            directory= None,
+            authenticate = False
             ):
 
         if log_level:
@@ -76,11 +69,20 @@ def collectionpublisher(
         else:
             basicConfig(level='INFO')
 
-        if os.path.exists(input_json):
-            process_file(collection, input_json)
+        if directory: #Procura mais arquivos '.json' numa árvore de diretórios
+            for (root, _, files) in os.walk(directory, topdown=True):
+                if 'items.json' in files:
+                    found = os.path.join(root, directory)
+                    fileslist.append(found)
         else:
-            warning("The file does not exist.")
-            logList.append("The file does not exist.")
+            fileslist.append(input_json)
+
+        for filejson in fileslist:
+            if os.path.exists(filejson): #input_json
+                process_file(collection, filejson, authenticate)
+            else:
+                warning("The file does not exist.")
+                logList.append("The file does not exist.")
 
 def guess_mime_type(extension: str, cog=False) -> Optional[str]:
     """Try to identify file mimetype."""
@@ -171,6 +173,15 @@ def create_asset(href: str,
 
     fmt = '%Y-%m-%dT%H:%M:%S'
     _now_str = datetime.utcnow().strftime(fmt)
+    file_size = None
+
+    debug("Checking if the file exists...")
+
+    file_size = os.stat(absolute_path).st_size
+
+    if file_size is None:
+        info(f"The file {absolute_path}, not found in the directory.")
+        logList.append(f"The file {absolute_path}, not found in the directory.")
 
     if created is None:
         created = _now_str
@@ -182,7 +193,7 @@ def create_asset(href: str,
     asset = {
         'href': str(href),
         'type': mime_type,
-        'bdc:size': os.stat(absolute_path).st_size,
+        'bdc:size': file_size,
         'checksum:multihash': multihash_checksum_sha256(str(absolute_path)),
         'roles': role,
         'created': created,
@@ -218,6 +229,7 @@ def create_asset(href: str,
 def create_item(collection: Collection,
                 reprocess: bool,
                 cloud_cover: float,
+                tile_id: str,
                 item_name: str,
                 start_date: datetime,
                 end_date: datetime,
@@ -228,12 +240,19 @@ def create_item(collection: Collection,
     logList.append(f'Item: {item_name}...')
 
     assets = dict()
+    
+    file_tci = ''
 
-    cog_mime_type_tiff = 'image/tiff; application=geotiff; profile=cloud-optimized'
     mime_type_png = 'image/png'
     r = re.compile(prefixo)
 
     with current_app._get_current_object().app_context():
+
+        if tile_id is not None:
+            tile = Tile.query().filter(
+            Tile.name == tile_id,
+            ).first()
+                    
         # Let's create a new Item definition
         with db.session.begin_nested():
             item = (
@@ -276,17 +295,22 @@ def create_item(collection: Collection,
                     file_pvi = assets_dict[key]
                     assets["thumbnail"] = create_asset(href=str(href_pvi), mime_type=mime_type_png,
                                             role=['thumbnail'], absolute_path=str(file_pvi))
-                elif (key=="CMASK") | ("BAND" in key):
+                elif (key in assert_list_image) | ("BAND" in key):
                     href_tci = prefixo_data + (r.sub('',assets_dict[key]))
                     file_tci = assets_dict[key]
-                    assets[key] = create_asset(href=str(href_tci), mime_type=cog_mime_type_tiff,
+                    mini_type_file = guess_mime_type(assets_dict[key])
+                    assets[key] = create_asset(href=str(href_tci), mime_type=mini_type_file,
                                         role=['data'], absolute_path=file_tci, is_raster=True)
-                else:
+                elif (key in assert_list_files):
                     href_file = prefixo_data + (r.sub('',assets_dict[key]))
                     file_extra = assets_dict[key]
                     mini_type_file = guess_mime_type(assets_dict[key])
                     assets[key] = create_asset(href=str(href_file), mime_type=mini_type_file,
                                         role=['file'], absolute_path=file_extra)
+                else:
+                    error(f"Sorry, invalid key! {key}")
+                    logList.append(f"Sorry, invalid key! {key}")
+                        
         except:
             error("Sorry, we were unable to create the Assets to the item! {}".format(traceback.format_exc()))
             logList.append("Sorry, we were unable to create the Assets to the item! {}".format(traceback.format_exc()))
@@ -299,20 +323,37 @@ def create_item(collection: Collection,
         item.start_date = datetime.strptime(start_date,'%Y-%m-%dT%H:%M:%S')
         item.end_date = datetime.strptime(end_date,'%Y-%m-%dT%H:%M:%S')
 
+        if (collection.identifier in goes_collections):
+            if file_tci:
+                nc = Dataset(file_tci)
+                # Extent
+                llx = nc.variables['geospatial_lat_lon_extent'].geospatial_westbound_longitude
+                lly = nc.variables['geospatial_lat_lon_extent'].geospatial_southbound_latitude
+                urx = nc.variables['geospatial_lat_lon_extent'].geospatial_eastbound_longitude
+                ury = nc.variables['geospatial_lat_lon_extent'].geospatial_northbound_latitude
+                boxer = str(llx) + ',' + str(lly) + ',' + str(urx) + ',' + str(ury)
+                bboxer = parse_bbox(boxer)
+
         item.srid = epsg_srid(str(file_tci))
+        if tile_id is not None:
+                item.tile_id = tile.id
+
         debug("Done!")
 
         try:
             debug("Processing raster_extent...")
-            item.geom = from_shape(raster_extent(str(file_tci)))
-            debug("Done!")
-            debug("Processing footprint...")
-            footprint, bbox = get_footprint(file_tci)
-            item.footprint = func.ST_SetSRID(func.ST_MakeEnvelope(*footprint), 4326)
-            debug("Done!")
-            debug("Processing image box...")
-            item.bbox = geom_to_wkb(bbox.envelope, srid=4326)
-            debug("Done!")
+            if (collection.identifier in goes_collections):
+                item.footprint = item.bbox = geom_to_wkb(bboxer.envelope)
+            else:
+                item.geom = from_shape(raster_extent(str(file_tci)))
+                debug("Done!")
+                debug("Processing footprint...")
+                footprint, bbox = get_footprint(file_tci)
+                item.footprint = func.ST_SetSRID(func.ST_MakeEnvelope(*footprint), 4326)
+                debug("Done!")
+                debug("Processing image box...")
+                item.bbox = geom_to_wkb(bbox.envelope, srid=4326)
+                debug("Done!")
         except:
             error("Error in footprint generation or area of ​​interest generation!")
             logList.append("Error in footprint generation or area of ​​interest generation!")
@@ -397,11 +438,62 @@ def write_log():
         error('Error when trying to create the "./log" directory!')
         logList.append('Error when trying to create the "./log" directory!')
 
-def process_file(collection1:str, filename:str):
+def authenticity(name:str, collection:str)->bool:
+
+    # Verifica se no arquivo a coleção equivale a coleção passada
+    sat = name.split('_')[0]    #Satelite name
+
+    if sat == 'CBERS' | sat == 'AMAZONIA':
+        sensor= name.split('_')[2]  #Sensor name
+        #Verifica se nome da coleção é valido no arquivo
+        if not sensor in sat_sensor_incluse:
+            return False
+    elif sat == 'GOES':
+        #regex
+        pass
+    elif sat == 'MODIS':
+        pass
+    elif sat == 'MOSAIC':
+        #regex
+        pass
+    elif sat == 'LE07':  #Landsat7
+        pass
+    else:
+        # Nome não corresponde a nenhuma coleção dentro do banco de dados
+        return False
+
+    #Verifica se o nome da coleção é igual nome da coleção no arquivo
+    sat_sensor = "_".join(name.split('_')[:3])
+    collection_v = "-".join(collection.split("-")[:2])
+    collection_f = dict_sat[collection_v]
+
+    if not collection_f == sat_sensor:
+        return False
+
+    return True
+
+def parse_bbox(value: Any):
+        fragments = value.split(',')
+
+        if len(fragments) != 4:
+            error(f'{value!r} is not a valid bbox. [xmin, ymin, xmax, ymax]')
+            logList.append(f'{value!r} is not a valid bbox. [xmin, ymin, xmax, ymax]')
+
+        try:
+            xmin, ymin, xmax, ymax = [float(elm) for elm in fragments]
+
+            return shapely.geometry.box(xmin, ymin, xmax, ymax)
+        except ValueError:
+            error(f'{fragments} has invalid float type')
+            logList.append(f'{fragments} has invalid float type')
+
+def process_file(collection1:str, filename:str, authenticate:bool):
     # Verificar se existe um json
     info('Starting to publish the metadata in the database...')
     logList.append('Starting to publish the metadata in the database...')
 
+    publish_fail = []
+            
     try:
         try:
             collection = collection_by_identifier(collection1)
@@ -424,56 +516,48 @@ def process_file(collection1:str, filename:str):
             logList.append(f"File {str(filename)} loaded, {len(data)} items to check.")
             count = 1        
             for i in data:
-                # Verifica se no arquivo a coleção equivale a coleção passada
-                sat = i['name'].split('_')[0]
-                sat2 = "_".join(i['name'].split('_')[:3])
-                sensor= i['name'].split('_')[2]
+                        if authenticate:
+                                #Verifica a autenticidade do arquivo passado
+                                if not authenticity(i['name'], collection1, count/len(data)):
+                                    error('The collection parameter does not match what is indicated in the file.')
+                                    logList.append('The collection parameter does not match what is indicated in the file.')
+                                    error(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
+                                    logList.append(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
+                                    count+=1
+                                    publish_fail.append(i['name'])
+                                    continue
 
-                #Verifica se nome da coleção é valido no arquivo
-                if not (sat in sat_sensor_incluse) & (sensor in sat_sensor_incluse):
-                    error('The collection parameter does not match what is indicated in the file.')
-                    logList.append('The collection parameter does not match what is indicated in the file.')
-                    info(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
-                    logList.append(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
-                    count+=1
-                    continue
+                        reprocess = False
+                        cloud_cover = None
+                        tile_id = None
 
-                #Verifica se o nome da coleção é igual nome da coleção no arquivo
-                collection_v = "-".join(collection1.split("-")[:2])
-                collection_f = dict_sat[collection_v]
+                        for key in i.keys():
+                                    if key=='reprocess':
+                                                reprocess = i[key]
+                                                continue
+                                    if key=='cloud_cover':
+                                                cloud_cover = i[key]
+                                                continue
+                                    if key=='tile_id':
+                                                tile_id = i[key]
+                                                continue
 
-                if not collection_f == sat2:
-                    error('The collection parameter does not match what is indicated in the file.')
-                    logList.append('The collection parameter does not match what is indicated in the file.')
-                    info(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
-                    logList.append(f"Error preparing to create item {i['name']} [{count}/{len(data)}]")
-                    count+=1
-                    continue
-
-                reprocess = False
-                cloud_cover = None
-
-                for key in i.keys():
-                    if key=='reprocess':
-                        reprocess = i[key]
-                        break
-                
-                for key in i.keys():
-                    if key=='cloud_cover':
-                        cloud_cover = i[key]
-                        break
                                 
-                info(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
-                logList.append(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
+                        info(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
+                        logList.append(f"Preparing to create item {i['name']} [{count}/{len(data)}]")
 
-                create_item(collection,
-                            reprocess,
-                            cloud_cover,
-                            i['name'],
-                            i['start_date'],
-                            i['end_date'],
-                            i['assets'])
-                count+=1
+                        if not create_item(collection,
+                                        reprocess,
+                                        cloud_cover,
+                                        tile_id,
+                                        i['name'],
+                                        i['start_date'],
+                                        i['end_date'],
+                                        i['assets']):
+                                                    publish_fail.append(i['name'])
+                                                    
+                                    
+                        count+=1
         f.close()
     except IOError:
         error(u'Error reading the file! {}'.format(traceback.format_exc()))
@@ -510,6 +594,14 @@ def process_file(collection1:str, filename:str):
         except:
             error('Error when trying to delete the .lock file!')
             logList.append('Error when trying to delete the .lock file!')
+
+    if publish_fail:
+        for namefail in publish_fail:
+            info(f'Item {namefail} has not been published!')
+            logList.append(f'Item {namefail} has not been published!')
+    else:
+        info('Success: All items have been published!')
+        logList.append('Success: All items have been published!')
 
     info('End of the process!')
     logList.append('End of the process!')
