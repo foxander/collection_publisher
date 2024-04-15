@@ -70,10 +70,10 @@ def collectionpublisher(
             basicConfig(level='INFO')
 
         if directory: #Procura mais arquivos '.json' numa árvore de diretórios
-            for (root, _, files) in os.walk(directory, topdown=True):
-                if 'items.json' in files:
-                    found = os.path.join(root, directory)
-                    fileslist.append(found)
+            for filepath in Path(directory).rglob("*.json"):
+                if filepath.is_dir():
+                    continue
+                fileslist.append(filepath)
         else:
             fileslist.append(input_json)
 
