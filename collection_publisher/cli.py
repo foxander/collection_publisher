@@ -54,7 +54,7 @@ def cli():
 @click.option('-i', '--input-json', type=click.STRING, help='Input Json', required=False)
 @click.option('-l', '--log-level', help='Log level', required=False)
 @click.option('-d', '--directory', type=click.STRING, help='Directories where .json files are located', required=False)
-@click.option('-a', '--authenticate', help='Checks authenticity of '.json' files', required=False)
+@click.option('-a', '--authenticate', help='Checks authenticity of .json files', required=False)
 @with_appcontext
 def collectionpublisher(
             collection: str,
