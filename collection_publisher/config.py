@@ -1,3 +1,5 @@
+import os
+
 # Configurações específicas para o ambiente de produção
 SQLALCHEMY_DATABASE_URI = os.environ.get("SQLALCHEMY_DATABASE_URI")
 prefixo = os.environ.get("COLLECTION_PUBLISHER_PREFIX")
